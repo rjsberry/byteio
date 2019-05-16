@@ -10,4 +10,9 @@ categories = ["encoding", "no standard library"]
 include = ["Cargo.toml", "src/**/*.rs", "LICENSE-APACHE", "LICENSE-MIT"]
 edition = "2018"
 
+[features]
+default = ["std"]
+std = []
+alloc = []
+
 [dependencies]
