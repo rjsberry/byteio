@@ -16,3 +16,4 @@ std = []
 alloc = []
 
 [dependencies]
+byteorder = { version = "1", default-features = false }

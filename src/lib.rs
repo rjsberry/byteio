@@ -20,6 +20,8 @@ use std::{error, io, vec::Vec};
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
+use byteorder::ByteOrder;
+
 pub mod prelude {
     //! The `byteio` prelude.
     //!
@@ -30,7 +32,7 @@ pub mod prelude {
     //! The purpose of this module is to alleviate imports by adding a glob
     //! `use` to the top of `byteio` heavy modules.
 
-    pub use crate::{ReadBytes, WriteBytes};
+    pub use crate::{ReadBytes, ReadBytesExt, WriteBytes, WriteBytesExt};
 }
 
 /// A specialized [`Result`][core-result-result] type for `byteio` operations.
@@ -129,6 +131,12 @@ impl From<Error> for io::Error {
         }
     }
 }
+
+/*
+ *
+ * ReadBytes
+ *
+ */
 
 /// Read a slice of bytes from a buffer.
 ///
@@ -239,6 +247,316 @@ impl<'a> ReadBytes<'a> for &'a mut [u8] {
     }
 }
 
+/*
+ *
+ * ReadBytesExt
+ *
+ */
+
+macro_rules! impl_read {
+    ($doc:literal, $ty:ty, $fn:ident, $byteorder:ident $( , )?) => {
+        #[doc = $doc]
+        #[inline]
+        fn $fn<E: ByteOrder>(&mut self) -> $ty {
+            E::$byteorder(self.read_exact(mem::size_of::<$ty>()))
+        }
+    }
+}
+
+macro_rules! impl_try_read {
+    ($doc:literal, $ty:ty, $fn:ident, $byteorder:ident $( , )?) => {
+        #[doc = $doc]
+        #[inline]
+        fn $fn<E: ByteOrder>(&mut self) -> crate::Result<$ty> {
+            Ok(E::$byteorder(self.try_read_exact(mem::size_of::<$ty>())?))
+        }
+    }
+}
+
+/// Extends `ReadBytes` with functions for reading numbers.
+///
+/// # Examples
+///
+/// Read `u16`s from a buffer using native endianness:
+///
+/// ```
+/// use byteio::ReadBytesExt;
+/// use byteorder::NativeEndian;
+///
+/// fn main() {
+///     let mut buf = &[0_u8, 1, 1, 0][..];
+///
+///     let a = buf.read_u16::<NativeEndian>();
+///     let b = buf.read_u16::<NativeEndian>();
+///
+///     assert!(buf.is_empty());
+/// }
+/// ```
+///
+/// Try to read `u16`s from a buffer using a specific endianness:
+///
+/// ```
+/// use byteio::ReadBytesExt;
+/// use byteorder::{BigEndian, LittleEndian};
+///
+/// fn main() -> byteio::Result<()> {
+///     let mut buf = &[0_u8, 1, 1, 0][..];
+///
+///     let a = buf.try_read_u16::<BigEndian>()?;
+///     let b = buf.try_read_u16::<LittleEndian>()?;
+///
+///     assert_eq!(a, 1);
+///     assert_eq!(b, 1);
+///
+///     assert!(buf.is_empty());
+///
+///     Ok(())
+/// }
+/// ```
+pub trait ReadBytesExt<'a>: ReadBytes<'a> {
+    /// Reads a `u8` from the underlying buffer.
+    ///
+    /// # Panics
+    ///
+    /// Panics if there are not enough bytes in `self`.
+    fn read_u8(&mut self) -> u8 {
+        self.read_exact(1)[0]
+    }
+
+    /// Attempts to read a `u8` from the underlying buffer.
+    ///
+    /// If there are not enough bytes in `self` this function will return
+    /// `Error::EndOfStream`.
+    fn try_read_u8(&mut self) -> crate::Result<u8> {
+        Ok(self.try_read_exact(1)?[0])
+    }
+
+    /// Reads an `i8` from the underlying buffer.
+    ///
+    /// # Panics
+    ///
+    /// Panics if there are not enough bytes in `self`.
+    fn read_i8(&mut self) -> i8 {
+        self.read_exact(1)[0] as _
+    }
+
+    /// Attempts to read an `i8` from the underlying buffer.
+    ///
+    /// If there are not enough bytes in `self` this function will return
+    /// `Error::EndOfStream`.
+    fn try_read_i8(&mut self) -> crate::Result<i8> {
+        Ok(self.try_read_exact(1)?[0] as _)
+    }
+
+    impl_read! {
+"Reads a `u16` from the underlying buffer.
+
+# Panics
+
+Panics if there are not enough bytes in `self`.",
+        u16,
+        read_u16,
+        read_u16,
+    }
+
+    impl_try_read! {
+"Attempts to read a `u16` from the underlying buffer.
+
+If there are not enough bytes in `self` this function will return `Error::EndOfStream`.",
+        u16,
+        try_read_u16,
+        read_u16,
+    }
+
+    impl_read! {
+"Reads an `i16` from the underlying buffer.
+
+# Panics
+
+Panics if there are not enough bytes in `self`.",
+        i16,
+        read_i16,
+        read_i16,
+    }
+
+    impl_try_read! {
+"Attempts to read an `i16` from the underlying buffer.
+
+If there are not enough bytes in `self` this function will return `Error::EndOfStream`.",
+        i16,
+        try_read_i16,
+        read_i16,
+    }
+
+    impl_read! {
+"Reads a `u32` from the underlying buffer.
+
+# Panics
+
+Panics if there are not enough bytes in `self`.",
+        u32,
+        read_u32,
+        read_u32,
+    }
+
+    impl_try_read! {
+"Attempts to read a `u32` from the underlying buffer.
+
+If there are not enough bytes in `self` this function will return `Error::EndOfStream`.",
+        u32,
+        try_read_u32,
+        read_u32,
+    }
+
+    impl_read! {
+"Reads an `i32` from the underlying buffer.
+
+# Panics
+
+Panics if there are not enough bytes in `self`.",
+        i32,
+        read_i32,
+        read_i32,
+    }
+
+    impl_try_read! {
+"Attempts to read an `i32` from the underlying buffer.
+
+If there are not enough bytes in `self` this function will return `Error::EndOfStream`.",
+        i32,
+        try_read_i32,
+        read_i32,
+    }
+
+    impl_read! {
+"Reads a `u64` from the underlying buffer.
+
+# Panics
+
+Panics if there are not enough bytes in `self`.",
+        u64,
+        read_u64,
+        read_u64,
+    }
+
+    impl_try_read! {
+"Attempts to read a `u64` from the underlying buffer.
+
+If there are not enough bytes in `self` this function will return `Error::EndOfStream`.",
+        u64,
+        try_read_u64,
+        read_u64,
+    }
+
+    impl_read! {
+"Reads an `i64` from the underlying buffer.
+
+# Panics
+
+Panics if there are not enough bytes in `self`.",
+        i64,
+        read_i64,
+        read_i64,
+    }
+
+    impl_try_read! {
+"Attempts to read an `i64` from the underlying buffer.
+
+If there are not enough bytes in `self` this function will return `Error::EndOfStream`.",
+        i64,
+        try_read_i64,
+        read_i64,
+    }
+
+    impl_read! {
+"Reads a `u128` from the underlying buffer.
+
+# Panics
+
+Panics if there are not enough bytes in `self`.",
+        u128,
+        read_u128,
+        read_u128,
+    }
+
+    impl_try_read! {
+"Attempts to read a `u128` from the underlying buffer.
+
+If there are not enough bytes in `self` this function will return `Error::EndOfStream`.",
+        u128,
+        try_read_u128,
+        read_u128,
+    }
+
+    impl_read! {
+"Reads an `i128` from the underlying buffer.
+
+# Panics
+
+Panics if there are not enough bytes in `self`.",
+        i128,
+        read_i128,
+        read_i128,
+    }
+
+    impl_try_read! {
+"Attempts to read an `i128` from the underlying buffer.
+
+If there are not enough bytes in `self` this function will return `Error::EndOfStream`.",
+        i128,
+        try_read_i128,
+        read_i128,
+    }
+
+    impl_read! {
+"Reads an IEEE754 `f32` from the underlying buffer.
+
+# Panics
+
+Panics if there are not enough bytes in `self`.",
+        f32,
+        read_f32,
+        read_f32,
+    }
+
+    impl_try_read! {
+"Attempts to read an IEEE754 `f32` from the underlying buffer.
+
+If there are not enough bytes in `self` this function will return `Error::EndOfStream`.",
+        f32,
+        try_read_f32,
+        read_f32,
+    }
+
+    impl_read! {
+"Reads an IEEE754 `f64` from the underlying buffer.
+
+# Panics
+
+Panics if there are not enough bytes in `self`.",
+        f64,
+        read_f64,
+        read_f64,
+    }
+
+    impl_try_read! {
+"Attempts to read an IEEE754 `f64` from the underlying buffer.
+
+If there are not enough bytes in `self` this function will return `Error::EndOfStream`.",
+        f64,
+        try_read_f64,
+        read_f64,
+    }
+}
+
+impl<'a, R: ReadBytes<'a>> ReadBytesExt<'a> for R {}
+
+/*
+ *
+ * WriteBytes
+ *
+ */
+
 /// Write a slice of bytes into a buffer.
 ///
 /// Writers can be thought of as mutable cursors that only allow you to seek
@@ -321,3 +639,325 @@ impl<'a> WriteBytes for &'a mut Vec<u8> {
         Ok(self.write_exact(buf))
     }
 }
+
+/*
+ *
+ * WriteBytesExt
+ *
+ */
+
+macro_rules! impl_write {
+    ($doc:literal, $ty:ty, $fn:ident, $byteorder:ident $( , )?) => {
+        #[doc = $doc]
+        #[inline]
+        fn $fn<E: ByteOrder>(&mut self, n: $ty) {
+            let mut buf = [0; mem::size_of::<$ty>()];
+            E::$byteorder(&mut buf, n);
+            self.write_exact(&buf);
+        }
+    }
+}
+
+macro_rules! impl_try_write {
+    ($doc:literal, $ty:ty, $fn:ident, $byteorder:ident $( , )?) => {
+        #[doc = $doc]
+        #[inline]
+        fn $fn<E: ByteOrder>(&mut self, n: $ty) -> crate::Result<()> {
+            let mut buf = [0; mem::size_of::<$ty>()];
+            E::$byteorder(&mut buf, n);
+            self.try_write_exact(&buf)?;
+            Ok(())
+        }
+    }
+}
+
+/// Extends `WriteBytes` with functions for writing numbers.
+///
+/// # Examples
+///
+/// Write `u16`s into a buffer using native endianness:
+///
+/// ```
+/// use byteio::WriteBytesExt;
+/// use byteorder::NativeEndian;
+///
+/// fn main() {
+///     let mut buf = [0; 4];
+///
+///     {
+///         let mut buf = &mut buf[..];
+///
+///         buf.write_u16::<NativeEndian>(256);
+///         buf.write_u16::<NativeEndian>(1);
+///
+///         assert!(buf.is_empty());
+///     }
+/// }
+/// ```
+///
+/// Try to write `u16`s into a buffer using a specific endianness:
+///
+/// ```
+/// use byteio::WriteBytesExt;
+/// use byteorder::{BigEndian, LittleEndian};
+///
+/// fn main() -> byteio::Result<()> {
+///     let mut buf = [0; 4];
+///
+///     {
+///         let mut buf = &mut buf[..];
+///
+///         buf.try_write_u16::<BigEndian>(1)?;
+///         buf.try_write_u16::<LittleEndian>(1)?;
+///
+///         assert!(buf.is_empty());
+///     }
+///
+///     assert_eq!(buf, [0, 1, 1, 0]);
+///
+///     Ok(())
+/// }
+/// ```
+pub trait WriteBytesExt: WriteBytes {
+    /// Writes a `u8` into the underlying buffer.
+    ///
+    /// # Panics
+    ///
+    /// Panics if there are not enough bytes in `self`.
+    #[inline]
+    fn write_u8(&mut self, n: u8) {
+        self.write_exact(&[n]);
+    }
+
+    /// Attempts to write a `u8` into the underlying buffer.
+    ///
+    /// If there are not enough bytes in `self` this function will return
+    /// `Error::EndOfStream`.
+    #[inline]
+    fn try_write_u8(&mut self, n: u8) -> crate::Result<()> {
+        self.try_write_exact(&[n])?;
+        Ok(())
+    }
+
+    /// Writes an `i8` into the underlying buffer.
+    ///
+    /// # Panics
+    ///
+    /// Panics if there are not enough bytes in `self`.
+    #[inline]
+    fn write_i8(&mut self, n: i8) {
+        self.write_exact(&[n as _]);
+    }
+
+    /// Attempts to write an `i8` into the underlying buffer.
+    ///
+    /// If there are not enough bytes in `self` this function will return
+    /// `Error::EndOfStream`.
+    #[inline]
+    fn try_write_i8(&mut self, n: i8) -> crate::Result<()> {
+        self.try_write_exact(&[n as _])?;
+        Ok(())
+    }
+
+    impl_write! {
+"Writes a `u16` into the underlying buffer.
+
+# Panics
+
+Panics if there are not enough bytes in `self`.",
+        u16,
+        write_u16,
+        write_u16,
+    }
+
+    impl_try_write! {
+"Attempts to write a `u16` into the underlying buffer.
+
+If there are not enough bytes in `self` this function will return `Error::EndOfStream`.",
+        u16,
+        try_write_u16,
+        write_u16,
+    }
+
+    impl_write! {
+"Writes an `i16` into the underlying buffer.
+
+# Panics
+
+Panics if there are not enough bytes in `self`.",
+        i16,
+        write_i16,
+        write_i16,
+    }
+
+    impl_try_write! {
+"Attempts to write an `i16` into the underlying buffer.
+
+If there are not enough bytes in `self` this function will return `Error::EndOfStream`.",
+        i16,
+        try_write_i16,
+        write_i16,
+    }
+
+    impl_write! {
+"Writes a `u32` into the underlying buffer.
+
+# Panics
+
+Panics if there are not enough bytes in `self`.",
+        u32,
+        write_u32,
+        write_u32,
+    }
+
+    impl_try_write! {
+"Attempts to write a `u32` into the underlying buffer.
+
+If there are not enough bytes in `self` this function will return `Error::EndOfStream`.",
+        u32,
+        try_write_u32,
+        write_u32,
+    }
+
+    impl_write! {
+"Writes an `i32` into the underlying buffer.
+
+# Panics
+
+Panics if there are not enough bytes in `self`.",
+        i32,
+        write_i32,
+        write_i32,
+    }
+
+    impl_try_write! {
+"Attempts to write an `i32` into the underlying buffer.
+
+If there are not enough bytes in `self` this function will return `Error::EndOfStream`.",
+        i32,
+        try_write_i32,
+        write_i32,
+    }
+
+    impl_write! {
+"Writes a `u64` into the underlying buffer.
+
+# Panics
+
+Panics if there are not enough bytes in `self`.",
+        u64,
+        write_u64,
+        write_u64,
+    }
+
+    impl_try_write! {
+"Attempts to write a `u64` into the underlying buffer.
+
+If there are not enough bytes in `self` this function will return `Error::EndOfStream`.",
+        u64,
+        try_write_u64,
+        write_u64,
+    }
+
+    impl_write! {
+"Writes an `i64` into the underlying buffer.
+
+# Panics
+
+Panics if there are not enough bytes in `self`.",
+        i64,
+        write_i64,
+        write_i64,
+    }
+
+    impl_try_write! {
+"Attempts to write an `i64` into the underlying buffer.
+
+If there are not enough bytes in `self` this function will return `Error::EndOfStream`.",
+        i64,
+        try_write_i64,
+        write_i64,
+    }
+
+    impl_write! {
+"Writes a `u128` into the underlying buffer.
+
+# Panics
+
+Panics if there are not enough bytes in `self`.",
+        u128,
+        write_u128,
+        write_u128,
+    }
+
+    impl_try_write! {
+"Attempts to write a `u128` into the underlying buffer.
+
+If there are not enough bytes in `self` this function will return `Error::EndOfStream`.",
+        u128,
+        try_write_u128,
+        write_u128,
+    }
+
+    impl_write! {
+"Writes an `i128` into the underlying buffer.
+
+# Panics
+
+Panics if there are not enough bytes in `self`.",
+        i128,
+        write_i128,
+        write_i128,
+    }
+
+    impl_try_write! {
+"Attempts to write an `i128` into the underlying buffer.
+
+If there are not enough bytes in `self` this function will return `Error::EndOfStream`.",
+        i128,
+        try_write_i128,
+        write_i128,
+    }
+
+    impl_write! {
+"Writes an IEEE754 `f32` into the underlying buffer.
+
+# Panics
+
+Panics if there are not enough bytes in `self`.",
+        f32,
+        write_f32,
+        write_f32,
+    }
+
+    impl_try_write! {
+"Attempts to write an IEEE754 `f32` into the underlying buffer.
+
+If there are not enough bytes in `self` this function will return `Error::EndOfStream`.",
+        f32,
+        try_write_f32,
+        write_f32,
+    }
+
+    impl_write! {
+"Writes an IEEE754 `f64` into the underlying buffer.
+
+# Panics
+
+Panics if there are not enough bytes in `self`.",
+        f64,
+        write_f64,
+        write_f64,
+    }
+
+    impl_try_write! {
+"Attempts to write an IEEE754 `f64` into the underlying buffer.
+
+If there are not enough bytes in `self` this function will return `Error::EndOfStream`.",
+        f64,
+        try_write_f64,
+        write_f64,
+    }
+}
+
+impl<W: WriteBytes> WriteBytesExt for W {}
