@@ -5,6 +5,8 @@
 //! [`u8`]: https://doc.rust-lang.org/std/primitive.u8.html
 
 #![no_std]
+#![allow(clippy::cast_possible_wrap, clippy::cast_sign_loss)]
+#![deny(missing_docs)]
 
 use core::{fmt, mem};
 
@@ -616,7 +618,8 @@ pub trait WriteBytes: AsMut<[u8]> {
         if buf.len() > self.as_mut().len() {
             Err(Error::EndOfStream)
         } else {
-            Ok(self.write_exact(buf))
+            self.write_exact(buf);
+            Ok(())
         }
     }
 }
@@ -636,7 +639,8 @@ impl<'a> WriteBytes for &'a mut Vec<u8> {
     }
 
     fn try_write_exact(&mut self, buf: &[u8]) -> crate::Result<()> {
-        Ok(self.write_exact(buf))
+        self.write_exact(buf);
+        Ok(())
     }
 }
 
