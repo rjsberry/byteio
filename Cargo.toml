@@ -20,5 +20,5 @@ byteorder = { version = "1", default-features = false }
 
 [dev-dependencies]
 itertools = "0.8"
-quickcheck = "0.8"
+quickcheck = { version = "0.8", default-features = false }
 quickcheck_macros = "0.8"
