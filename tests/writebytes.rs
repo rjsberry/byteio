@@ -31,7 +31,7 @@ mod mut_slice {
         let src: &[u8] = &*src;
         let mut dst: &mut [u8] = &mut *dst;
 
-        TestResult::from_bool(dst.try_write_exact(src).is_err())
+        TestResult::from_bool(dst.try_write_exact(src).unwrap_err() == byteio::Error::EndOfStream)
     }
 
     #[quickcheck]

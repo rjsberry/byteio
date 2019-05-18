@@ -20,7 +20,7 @@ mod slice {
         let len = src.len();
         let mut src: &[u8] = &*src;
 
-        src.try_read_exact(len + 1).is_err()
+        src.try_read_exact(len + 1).unwrap_err() == byteio::Error::EndOfStream
     }
 
     #[quickcheck]
@@ -100,7 +100,7 @@ mod mut_slice {
         let len = src.len();
         let mut src: &mut [u8] = &mut *src;
 
-        src.try_read_exact(len + 1).is_err()
+        src.try_read_exact(len + 1).unwrap_err() == byteio::Error::EndOfStream
     }
 
     #[quickcheck]

@@ -961,3 +961,47 @@ If there are not enough bytes in `self` this function will return `Error::EndOfS
 }
 
 impl<W: WriteBytes> WriteBytesExt for W {}
+
+/*
+ *
+ * Unit tests
+ *
+ * For the full test suite, see $CARGO_MANIFEST_DIR/tests
+ *
+ */
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn io_error_from_error_end_of_stream() {
+        let err: io::Error = Error::EndOfStream.into();
+        assert_eq!(err.kind(), io::ErrorKind::UnexpectedEof);
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    #[should_panic]
+    fn io_error_from_error_nonexhaustive() {
+        let _: io::Error = Error::_nonexhaustive(()).into();
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn display_error_end_of_stream() {
+        use std::string::ToString;
+
+        assert_eq!(Error::EndOfStream.to_string(), "unexpected end of stream");
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    #[should_panic]
+    fn display_error_nonexhaustive() {
+        use std::string::ToString;
+
+        let _ = Error::_nonexhaustive(()).to_string();
+    }
+}
