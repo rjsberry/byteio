@@ -1,0 +1,8 @@
+steps:
+  - template: azure-install-rust.yml
+
+  - bash: rustup component add rustfmt
+    displayName: Install rustfmt
+
+  - bash: cargo fmt -- --check
+    displayName: Check formatting

@@ -1,0 +1,13 @@
+steps:
+  - template: azure-install-rust.yml
+
+  - bash: curl -L https://github.com/xd009642/tarpaulin/releases/download/0.8.0/cargo-tarpaulin-0.8.0-travis.tar.gz | tar zxf -
+    displayName: Download cargo-tarpaulin
+
+  - bash: ./cargo-tarpaulin tarpaulin --out Xml
+    displayName: Generate coverage report
+
+  - bash: bash <(curl -s https://codecov.io/bash) -Z
+    env:
+      CODECOV_TOKEN: $(codecovToken)
+    displayName: Upload coverage report

@@ -1,0 +1,17 @@
+steps:
+  - template: azure-install-rust.yml
+  - bash: rustup target add $TARGET
+    displayName: Install Rust target
+
+  - bash: sudo apt-get install g++-multilib
+    condition: eq( variables['Agent.OS'], 'Linux' )
+    displayName: Install g++-multilib
+
+  - bash: cargo build --target $TARGET
+    displayName: "Build (Debug)"
+  - bash: cargo build --target $TARGET --release
+    displayName: "Build (Release)"
+  - bash: cargo test --target $TARGET
+    displayName: "Tests (Debug)"
+  - bash: cargo test --target $TARGET --release
+    displayName: "Tests (Release)"
