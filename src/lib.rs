@@ -1283,8 +1283,20 @@ impl<W: WriteBytes> AsMut<[u8]> for Writer<W> {
 
 impl<W: WriteBytes> WriteBytes for Writer<W> {
     fn write_exact(&mut self, buf: &[u8]) {
-        self.1 += buf.len();
         self.0.write_exact(buf);
+        self.1 += buf.len();
+    }
+
+    // NOTE: we can't rely on the default implementation here because the
+    //       underlying writer may be able to reallocate
+    fn try_write_exact(&mut self, buf: &[u8]) -> crate::Result<()> {
+        match self.0.try_write_exact(buf) {
+            res @ Ok(_) => {
+                self.1 += buf.len();
+                res
+            }
+            res @ Err(_) => res,
+        }
     }
 }
 
