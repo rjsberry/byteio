@@ -1,12 +1,15 @@
 [package]
 name = "byteio"
-version = "0.0.0"
+version = "0.1.0"
 authors = ["Richard Berry <rjsberry@pm.me>"]
 license = "MIT/Apache-2.0"
-description = "I/O-like operations for contiguous u8 regions"
+description = "I/O abstractions for bytes"
+documentation = "https://docs.rs/byteio"
+homepage = "https://github.com/rjsberry/byteio"
 repository = "https://github.com/rjsberry/byteio"
-keywords = ["bytes", "io", "no_std"]
-categories = ["encoding", "no standard library"]
+readme = "README.md"
+keywords = ["byte", "bytes", "binary", "io", "no_std"]
+categories = ["encoding", "no-std"]
 include = ["Cargo.toml", "src/**/*.rs", "LICENSE-APACHE", "LICENSE-MIT"]
 edition = "2018"
 
