@@ -5,6 +5,8 @@ steps:
     displayName: Download cargo-tarpaulin
 
   - bash: ./cargo-tarpaulin tarpaulin --out Xml
+    env:
+      QUICKCHECK_TESTS: 10000
     displayName: Generate coverage report
 
   - bash: bash <(curl -s https://codecov.io/bash) -Z

@@ -8,7 +8,7 @@
 #![allow(clippy::cast_possible_wrap, clippy::cast_sign_loss)]
 #![deny(missing_docs)]
 
-use core::{fmt, mem};
+use core::{fmt, marker::PhantomData, mem};
 
 #[cfg(feature = "std")]
 extern crate std;
@@ -555,6 +555,124 @@ impl<'a, R: ReadBytes<'a>> ReadBytesExt<'a> for R {}
 
 /*
  *
+ * Reader
+ *
+ */
+
+/// A convenience structure used for counting the number of bytes read.
+///
+/// This structure wraps an implementation of [`ReadBytes`][readbytes]. It
+/// forwards read operations to the inner type while also maintaining a count
+/// of the number of bytes that pass through it.
+///
+/// When you have finished with it, you can return the original type via the
+/// [`into_inner`][into-inner] method.
+///
+/// # Examples
+///
+/// ```
+/// use byteio::{ReadBytes, ReadBytesExt, Reader};
+/// use byteorder::BigEndian;
+///
+/// fn main() -> byteio::Result<()> {
+///     let buf: &[u8] = &[1, 0, 2, 0, 0, 0, 3];
+///
+///     let mut reader = Reader::new(buf);
+///
+///     assert_eq!(reader.try_read_u8()?, 1);
+///     assert_eq!(reader.try_read_u16::<BigEndian>()?, 2);
+///     assert_eq!(reader.try_read_u32::<BigEndian>()?, 3);
+///
+///     assert_eq!(reader.num_bytes_read(), 7);
+///
+///     let inner = reader.into_inner();
+///     assert!(inner.is_empty());
+///
+///     Ok(())
+/// }
+/// ```
+///
+/// [readbytes]: trait.ReadBytes.html
+/// [into-inner]: struct.Reader.html#method.into_inner
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct Reader<'a, R: ReadBytes<'a>>(R, usize, PhantomData<&'a ()>);
+
+impl<'a, R: ReadBytes<'a>> Reader<'a, R> {
+    /// Creates a new `Reader` by wrapping a [`ReadBytes`][readbytes]
+    /// implementor.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use byteio::Reader;
+    ///
+    /// let buf = [0_u8; 2];
+    /// let mut reader = Reader::new(&buf[..]);
+    /// ```
+    ///
+    /// [readbytes]: trait.ReadBytes.html
+    #[inline]
+    pub fn new(reader: R) -> Self {
+        Self(reader, 0, PhantomData)
+    }
+
+    /// Retrieves the number of bytes that have been read by this `Reader`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use byteio::{ReadBytes, Reader};
+    ///
+    /// let buf = [0_u8; 2];
+    /// let mut reader = Reader::new(&buf[..]);
+    /// let _ = reader.read_exact(1);
+    /// let _ = reader.read_exact(1);
+    ///
+    /// assert_eq!(reader.num_bytes_read(), 2);
+    /// ```
+    #[inline]
+    pub fn num_bytes_read(&self) -> usize {
+        self.1
+    }
+
+    /// Consumes this `Reader` and returns the original [`ReadBytes`][readbytes]
+    /// implementor.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use byteio::{ReadBytes, Reader};
+    ///
+    /// let buf = [0_u8; 2];
+    /// let mut reader = Reader::new(&buf[..]);
+    /// let _ = reader.read_exact(1);
+    /// let inner = reader.into_inner();
+    ///
+    /// assert_eq!(inner.len(), 1); // the reader consumed one byte from its view of the slice
+    /// ```
+    ///
+    /// [readbytes]: trait.ReadBytes.html
+    #[inline]
+    pub fn into_inner(self) -> R {
+        self.0
+    }
+}
+
+impl<'a, R: ReadBytes<'a>> AsRef<[u8]> for Reader<'a, R> {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
+impl<'a, R: ReadBytes<'a>> ReadBytes<'a> for Reader<'a, R> {
+    fn read_exact(&mut self, n: usize) -> &'a [u8] {
+        self.1 += n;
+        self.0.read_exact(n)
+    }
+}
+
+/*
+ *
  * WriteBytes
  *
  */
@@ -965,6 +1083,126 @@ If there are not enough bytes in `self` this function will return `Error::EndOfS
 }
 
 impl<W: WriteBytes> WriteBytesExt for W {}
+
+/*
+ *
+ * Writer
+ *
+ */
+
+/// A convenience structure used for counting the number of bytes written.
+///
+/// This structure wraps an implementation of [`WriteBytes`][writebytes]. It
+/// forwards write operations to the inner type while also maintaining a count
+/// of the number of bytes that pass through it.
+///
+/// When you have finished with it, you can return the original type via the
+/// [`into_inner`][into-inner] method.
+///
+/// # Examples
+///
+/// ```
+/// use byteio::{WriteBytes, WriteBytesExt, Writer};
+/// use byteorder::BigEndian;
+///
+/// fn main() -> byteio::Result<()> {
+///     let mut buf = [0; 7];
+///
+///     {
+///         let mut writer = Writer::new(&mut buf[..]);
+///
+///         writer.try_write_u8(1)?;
+///         writer.try_write_u16::<BigEndian>(2)?;
+///         writer.try_write_u32::<BigEndian>(3)?;
+///
+///         assert_eq!(writer.num_bytes_written(), 7);
+///
+///         let inner = writer.into_inner();
+///         assert!(inner.is_empty());
+///     }
+///
+///     assert_eq!(buf, [1, 0, 2, 0, 0, 0, 3]);
+///
+///     Ok(())
+/// }
+/// ```
+///
+/// [writebytes]: trait.WriteBytes.html
+/// [into-inner]: struct.Writer.html#method.into_inner
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct Writer<W: WriteBytes>(W, usize);
+
+impl<W: WriteBytes> Writer<W> {
+    /// Creates a new `Writer` by wrapping a [`WriteBytes`][writebytes]
+    /// implementor.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use byteio::Writer;
+    ///
+    /// let mut buf = [0_u8; 2];
+    /// let mut writer = Writer::new(&mut buf[..]);
+    /// ```
+    ///
+    /// [writebytes]: trait.WriteBytes.html
+    #[inline]
+    pub fn new(writer: W) -> Self {
+        Self(writer, 0)
+    }
+
+    /// Retrieves the number of bytes that have been written by this `Writer`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use byteio::{WriteBytes, Writer};
+    ///
+    /// let mut buf = [0_u8; 2];
+    /// let mut writer = Writer::new(&mut buf[..]);
+    /// writer.write_exact(&[1]);
+    /// writer.write_exact(&[1]);
+    ///
+    /// assert_eq!(writer.num_bytes_written(), 2);
+    /// ```
+    #[inline]
+    pub fn num_bytes_written(&self) -> usize {
+        self.1
+    }
+
+    /// Consumes this `Writer` and returns the original
+    /// [`WriteBytes`][writebytes] implementor.
+    ///
+    /// ```
+    /// use byteio::{WriteBytes, Writer};
+    ///
+    /// let mut buf = [0_u8; 2];
+    /// let mut writer = Writer::new(&mut buf[..]);
+    /// writer.write_exact(&[1]);
+    /// let inner = writer.into_inner();
+    ///
+    /// assert_eq!(inner.len(), 1); // the writer consumed one byte from its view of the slice
+    /// ```
+    ///
+    /// [writebytes]: trait.WriteBytes.html
+    #[inline]
+    pub fn into_inner(self) -> W {
+        self.0
+    }
+}
+
+impl<W: WriteBytes> AsMut<[u8]> for Writer<W> {
+    fn as_mut(&mut self) -> &mut [u8] {
+        self.0.as_mut()
+    }
+}
+
+impl<W: WriteBytes> WriteBytes for Writer<W> {
+    fn write_exact(&mut self, buf: &[u8]) {
+        self.1 += buf.len();
+        self.0.write_exact(buf);
+    }
+}
 
 /*
  *
