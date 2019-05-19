@@ -59,14 +59,14 @@ To start using `byteio` add it to your `Cargo.toml` like so:
 
 ```toml
 [dependencies]
-byteio = 0.1
+byteio = "0.1"
 ```
 
-By default this will active the `std` feature which enables functionality in the
-crate which is only available when compiling with the standard library.
+By default this will active the `std` feature which enables functionality in
+the crate which is only available when compiling with the standard library.
 
 To use the crate in a `no_std` environment you just need to disable this
-feature. This can be done by adjusting your `Cargo.toml` like so:
+feature. This can be done by adjusting your `Cargo.toml`:
 
 ```toml
 [dependencies]
@@ -74,63 +74,42 @@ byteio = { version = "0.1", default-features = false }
 ```
 
 The crate has a final feature: `alloc`. This should be used when you are
-building in a `no_std` environment, have an allocator, and want functionality
-for working with `Vec<u8>`. You can activate this by adjusting your `Cargo.toml`
-again:
+building in a `no_std` environment, have an allocator, and want
+functionality for working with `Vec<u8>`. You can activate this by adjusting
+your `Cargo.toml` again:
 
 ```toml
 [dependencies]
 byteio = { version = "0.1", default-features = false, features = ["alloc"] }
 ```
 
-## Examples
+## Usage
 
-Manually deserializing a simple structure from a buffer:
+Manual serialization and deserialization of a simple network packet:
 
 ```rust
-use byteio::{ReadBytes, ReadBytesExt};
+use std::convert::TryInto;
 
-/// A packet whose payload is encoded as `[n, b0, b1, ..., bn-1]`.
+use byteio::prelude::*; // ReadBytes, ReadBytesExt, WriteBytes, WriteBytesExt
+use byteorder::NetworkEndian;
+
+/// A packet whose payload is encoded as `[n_msb, n_lsb, b_0, b_1, ..., b_n-1]`.
 struct Packet<'a> {
-    payload: &'a [u8],
+   payload: &'a [u8],
 }
 
 impl<'a> Packet<'a> {
-    fn new<R: ReadBytes<'a>>(mut reader: R) -> byteio::Result<Self> {
-        let len: usize = reader.try_read_u8()?.into();
+    fn decode<R: ReadBytes<'a>>(mut reader: R) -> byteio::Result<Self> {
+        let len: usize = reader.try_read_u16::<NetworkEndian>()?.into();
         let payload = reader.try_read_exact(len)?;
 
         Ok(Self { payload })
     }
-}
 
-fn main() -> byteio::Result<()> {
-    let data = b"\x0Chello, world";
-
-    let packet = Packet::new(&data[..])?;
-    assert_eq!(packet.payload, b"hello, world");
-
-    Ok(())
-}
-```
-
-Serializing an owned representation of the above structure into a growable
-buffer:
-
-```rust
-use core::convert::TryInto;
-
-use byteio::{WriteBytes, WriteBytesExt};
-
-struct Packet {
-    payload: Vec<u8>,
-}
-
-impl Packet {
     fn encode<W: WriteBytes>(&self, mut writer: W) -> byteio::Result<()> {
-        let len: u8 = self.payload.len().try_into().unwrap_or_else(|_| !0);
+        let len: u16 = self.payload.len().try_into().unwrap_or_else(|_| !0);
 
-        writer.try_write_u8(len)?;
+        writer.try_write_u16::<NetworkEndian>(len)?;
         writer.try_write_exact(&self.payload[..usize::from(len)])?;
 
         Ok(())
@@ -138,11 +117,14 @@ impl Packet {
 }
 
 fn main() -> byteio::Result<()> {
-    let packet = Packet { payload: b"hello, world".to_vec() };
+    let data = b"\x00\x0Chello, world";
+
+    let packet = Packet::decode(&data[..])?;
+    assert_eq!(packet.payload, b"hello, world");
 
     let mut buf = Vec::new();
     packet.encode(&mut buf)?;
-    assert_eq!(&*buf, b"\x0Chello, world");
+    assert_eq!(&*buf, data);
 
     Ok(())
 }
