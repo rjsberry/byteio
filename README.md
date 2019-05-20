@@ -45,13 +45,16 @@ found elsewhere, such as [`std::io`][std-io], [`byteorder`][byteorder], and
 * First class `no_std` support.
 * Reads with lifetimes tied to the underlying buffers.
 
-The crate is based around two core traits: `ReadBytes` and `WriteBytes`. Two
-extension traits which add functionality for reading and writing numbers also
-have blanket implementations for any types that implement the core traits.
+The crate is based around two core traits: [`ReadBytes`][readbytes] and
+[`WriteBytes`][writebytes]. Two extension traits which add functionality for
+reading and writing numbers also have blanket implementations for any types that
+implement the core traits.
 
 [std-io]: https://doc.rust-lang.org/std/io/index.html
 [byteorder]: https://docs.rs/byteorder/latest/byteorder/
 [bytes]: https://docs.rs/bytes/latest/bytes
+[readbytes]: https://docs.rs/byteio/latest/byteio/trait.ReadBytes.html
+[writebytes]: https://docs.rs/byteio/latest/byteio/trait.WriteBytes.html
 
 ## Installation
 
