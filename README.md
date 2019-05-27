@@ -94,7 +94,6 @@ Manual serialization and deserialization of a simple network packet:
 use std::convert::TryInto;
 
 use byteio::prelude::*; // ReadBytes, ReadBytesExt, WriteBytes, WriteBytesExt
-use byteorder::NetworkEndian;
 
 /// A packet whose payload is encoded as `[n_msb, n_lsb, b_0, b_1, ..., b_n-1]`.
 struct Packet<'a> {
@@ -103,7 +102,7 @@ struct Packet<'a> {
 
 impl<'a> Packet<'a> {
     fn decode<R: ReadBytes<'a>>(mut reader: R) -> byteio::Result<Self> {
-        let len: usize = reader.try_read_u16::<NetworkEndian>()?.into();
+        let len: usize = reader.try_read_u16_be()?.into();
         let payload = reader.try_read_exact(len)?;
 
         Ok(Self { payload })
@@ -112,7 +111,7 @@ impl<'a> Packet<'a> {
     fn encode<W: WriteBytes>(&self, mut writer: W) -> byteio::Result<()> {
         let len: u16 = self.payload.len().try_into().unwrap_or_else(|_| !0);
 
-        writer.try_write_u16::<NetworkEndian>(len)?;
+        writer.try_write_u16_be(len)?;
         writer.try_write_exact(&self.payload[..usize::from(len)])?;
 
         Ok(())

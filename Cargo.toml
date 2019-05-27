@@ -19,7 +19,6 @@ std = []
 alloc = []
 
 [dependencies]
-byteorder = { version = "1", default-features = false }
 
 [dev-dependencies]
 itertools = "0.8"
