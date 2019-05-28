@@ -95,6 +95,7 @@ mod mut_slice {
     }
 }
 
+#[cfg(any(feature = "std", feature = "alloc"))]
 mod mut_vec_ref {
     use byteio::WriteBytes;
 

@@ -73,6 +73,7 @@
 //!     }
 //! }
 //!
+//! # #[cfg(any(feature = "std", feature = "alloc"))]
 //! fn main() -> byteio::Result<()> {
 //!     let data = b"\x00\x0Chello, world";
 //!
@@ -85,6 +86,9 @@
 //!
 //!     Ok(())
 //! }
+//!
+//! # #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+//! # fn main() {}
 //! ```
 
 #![no_std]
@@ -1656,6 +1660,8 @@ impl<W: WriteBytes> WriteBytes for Writer<W> {
 
 #[cfg(test)]
 mod test {
+    #![allow(unused_imports)]
+
     use super::*;
 
     #[cfg(feature = "std")]
