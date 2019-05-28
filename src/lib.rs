@@ -925,6 +925,16 @@ impl<'a, R: ReadBytes<'a>> ReadBytes<'a> for Reader<'a, R> {
         self.1 += n;
         self.0.read_exact(n)
     }
+
+    fn try_read_exact(&mut self, n: usize) -> crate::Result<&'a [u8]> {
+        match self.0.try_read_exact(n) {
+            res @ Ok(_) => {
+                self.1 += n;
+                res
+            }
+            res @ Err(_) => res,
+        }
+    }
 }
 
 /*
@@ -1625,8 +1635,6 @@ impl<W: WriteBytes> WriteBytes for Writer<W> {
         self.1 += buf.len();
     }
 
-    // NOTE: we can't rely on the default implementation here because the
-    //       underlying writer may be able to reallocate
     fn try_write_exact(&mut self, buf: &[u8]) -> crate::Result<()> {
         match self.0.try_write_exact(buf) {
             res @ Ok(_) => {
