@@ -62,7 +62,7 @@ To start using `byteio` add it to your `Cargo.toml` like so:
 
 ```toml
 [dependencies]
-byteio = "0.1"
+byteio = "0.2"
 ```
 
 By default this will active the `std` feature which enables functionality in
@@ -73,7 +73,7 @@ feature. This can be done by adjusting your `Cargo.toml`:
 
 ```toml
 [dependencies]
-byteio = { version = "0.1", default-features = false }
+byteio = { version = "0.2", default-features = false }
 ```
 
 The crate has a final feature: `alloc`. This should be used when you are
@@ -83,7 +83,7 @@ your `Cargo.toml` again:
 
 ```toml
 [dependencies]
-byteio = { version = "0.1", default-features = false, features = ["alloc"] }
+byteio = { version = "0.2", default-features = false, features = ["alloc"] }
 ```
 
 ## Usage
