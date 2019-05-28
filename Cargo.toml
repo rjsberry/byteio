@@ -1,6 +1,6 @@
 [package]
 name = "byteio"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Richard Berry <rjsberry@pm.me>"]
 license = "MIT/Apache-2.0"
 description = "I/O abstractions for bytes"
@@ -17,8 +17,6 @@ edition = "2018"
 default = ["std"]
 std = []
 alloc = []
-
-[dependencies]
 
 [dev-dependencies]
 itertools = "0.8"
