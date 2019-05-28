@@ -829,6 +829,11 @@ impl<'a, R: ReadBytes<'a>> ReadBytesExt<'a> for R {}
 /// When you have finished with it, you can return the original type via the
 /// [`into_inner`][into-inner] method.
 ///
+/// When compiled with the `std` feature this structure implements
+/// [`Read`][std-io-read].
+///
+/// [std-io-read]: https://doc.rust-lang.org/std/io/trait.Read.html
+///
 /// # Examples
 ///
 /// ```
@@ -938,6 +943,16 @@ impl<'a, R: ReadBytes<'a>> ReadBytes<'a> for Reader<'a, R> {
             }
             res @ Err(_) => res,
         }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'a, R: ReadBytes<'a>> io::Read for Reader<'a, R> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let n = ::core::cmp::min(buf.len(), self.as_ref().len());
+        buf[..n].copy_from_slice(<Self as ReadBytes>::read_exact(self, n));
+
+        Ok(n)
     }
 }
 
@@ -1536,6 +1551,11 @@ impl<W: WriteBytes> WriteBytesExt for W {}
 /// When you have finished with it, you can return the original type via the
 /// [`into_inner`][into-inner] method.
 ///
+/// When compiled with the `std` feature this structure implements
+/// [`Write`][std-io-write].
+///
+/// [std-io-write]: https://doc.rust-lang.org/std/io/trait.Write.html
+///
 /// # Examples
 ///
 /// ```
@@ -1647,6 +1667,20 @@ impl<W: WriteBytes> WriteBytes for Writer<W> {
             }
             res @ Err(_) => res,
         }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<W: WriteBytes> io::Write for Writer<W> {
+    fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+        let n = ::core::cmp::min(data.len(), self.as_mut().len());
+        <Self as WriteBytes>::write_exact(self, &data[..n]);
+
+        Ok(n)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
     }
 }
 

@@ -36,6 +36,9 @@ macro_rules! _try_write_exact {
 }
 
 mod mut_slice {
+    #[cfg(feature = "std")]
+    use std::{cmp, io};
+
     use byteio::{WriteBytes, Writer};
 
     use itertools::Itertools;
@@ -65,10 +68,23 @@ mod mut_slice {
             |inner: &mut [u8]| inner.is_empty(),
         )
     }
+
+    #[cfg(feature = "std")]
+    #[quickcheck]
+    fn qc_writer_io_write(mut src: Vec<u8>, dst: Vec<u8>) -> bool {
+        let mut writer = Writer::new(&mut *src);
+        <Writer<_> as io::Write>::write(&mut writer, &*dst).expect("io write");
+        let n = cmp::min(src.len(), dst.len());
+
+        &src[..n] == &dst[..n]
+    }
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 mod mut_vec_ref {
+    #[cfg(feature = "std")]
+    use std::{cmp, io};
+
     use byteio::{WriteBytes, Writer};
 
     use itertools::Itertools;
@@ -92,5 +108,17 @@ mod mut_vec_ref {
             _try_write_exact,
             |inner: &mut [u8]| inner.to_vec() == src,
         )
+    }
+
+    #[cfg(feature = "std")]
+    #[quickcheck]
+    fn qc_writer_io_write(dst: Vec<u8>) -> bool {
+        let mut src = Vec::with_capacity(dst.len());
+
+        let mut writer = Writer::new(&mut src);
+        <Writer<_> as io::Write>::write(&mut writer, &*dst).expect("io write");
+        let n = cmp::min(src.len(), dst.len());
+
+        &src[..n] == &dst[..n]
     }
 }

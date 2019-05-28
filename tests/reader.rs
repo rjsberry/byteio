@@ -33,6 +33,9 @@ macro_rules! _try_read_exact {
 }
 
 mod slice {
+    #[cfg(feature = "std")]
+    use std::{cmp, io};
+
     use byteio::{ReadBytes, Reader};
 
     use quickcheck::TestResult;
@@ -47,9 +50,22 @@ mod slice {
     fn qc_reader_try(src: Vec<u8>, chunks: Vec<u8>) -> TestResult {
         _impl_qc_reader!(&[u8], src, chunks, _try_read_exact)
     }
+
+    #[cfg(feature = "std")]
+    #[quickcheck]
+    fn qc_reader_io_read(src: Vec<u8>, mut dst: Vec<u8>) -> bool {
+        let mut reader = Reader::new(&*src);
+        <Reader<_> as io::Read>::read(&mut reader, &mut dst).expect("io read");
+        let n = cmp::min(src.len(), dst.len());
+
+        &src[..n] == &dst[..n]
+    }
 }
 
 mod mut_slice {
+    #[cfg(feature = "std")]
+    use std::{cmp, io};
+
     use byteio::{ReadBytes, Reader};
 
     use quickcheck::TestResult;
@@ -63,5 +79,15 @@ mod mut_slice {
     #[quickcheck]
     fn qc_reader_try(mut src: Vec<u8>, chunks: Vec<u8>) -> TestResult {
         _impl_qc_reader!(&mut [u8], src, chunks, _try_read_exact)
+    }
+
+    #[cfg(feature = "std")]
+    #[quickcheck]
+    fn qc_reader_io_read(mut src: Vec<u8>, mut dst: Vec<u8>) -> bool {
+        let mut reader = Reader::new(&mut *src);
+        <Reader<_> as io::Read>::read(&mut reader, &mut dst).expect("io read");
+        let n = cmp::min(src.len(), dst.len());
+
+        &src[..n] == &dst[..n]
     }
 }
