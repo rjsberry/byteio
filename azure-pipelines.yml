@@ -63,10 +63,10 @@ stages:
               TARGET: x86_64-pc-windows-msvc
             i686-msvc:
               TARGET: i686-pc-windows-msvc
-            x86_64-gnu:
-              TARGET: x86_64-pc-windows-gnu
-            i686-gnu:
-              TARGET: i686-pc-windows-gnu
+            #x86_64-gnu:
+            #  TARGET: x86_64-pc-windows-gnu
+            #i686-gnu:
+            #  TARGET: i686-pc-windows-gnu
 
       - job: Windows_vs2015
         pool:
