@@ -1,159 +1,165 @@
-mod slice {
-    use byteio::ReadBytes;
+use byteio::ReadBytes;
 
-    use quickcheck::TestResult;
+fn check_read_exact_not_enough_bytes<'a, R: ReadBytes<'a>>(src: &[u8], mut reader: R) {
+    let len = src.len();
+    let _ = reader.read_exact(len + 1);
+}
+
+fn check_try_read_exact_not_enough_bytes<'a, R: ReadBytes<'a>>(src: &[u8], mut reader: R) -> bool {
+    let len = src.len();
+    reader.try_read_exact(len + 1).unwrap_err() == ::byteio::Error::EndOfStream
+}
+
+fn check_read_exact<'a, R: ReadBytes<'a>>(src: &[u8], mut reader: R) -> bool {
+    let len = src.len();
+    let bytes = reader.read_exact(len);
+
+    reader.as_ref().is_empty() && bytes.to_vec() == src
+}
+
+fn check_try_read_exact<'a, R: ReadBytes<'a>>(src: &[u8], mut reader: R) -> bool {
+    let len = src.len();
+    let bytes = reader.try_read_exact(len).unwrap();
+
+    reader.as_ref().is_empty() && bytes.to_vec() == src
+}
+
+mod slice {
+    use super::*;
+
     use quickcheck_macros::quickcheck;
 
     #[quickcheck]
     #[should_panic]
-    fn qc_read_exact_not_enough_bytes(src: Vec<u8>) -> bool {
-        let len = src.len();
-        let mut src: &[u8] = &*src;
-
-        let _ = src.read_exact(len + 1);
-
-        true
+    fn qc_read_exact_not_enough_bytes(src: Vec<u8>) {
+        let reader: &[u8] = &*src;
+        check_read_exact_not_enough_bytes(&src, reader);
     }
 
     #[quickcheck]
     fn qc_try_read_exact_not_enough_bytes(src: Vec<u8>) -> bool {
-        let len = src.len();
-        let mut src: &[u8] = &*src;
-
-        src.try_read_exact(len + 1).unwrap_err() == byteio::Error::EndOfStream
+        let reader: &[u8] = &*src;
+        check_try_read_exact_not_enough_bytes(&src, reader)
     }
 
     #[quickcheck]
     fn qc_read_exact(src: Vec<u8>) -> bool {
-        let len = src.len();
-        let mut reader: &[u8] = &*src;
-
-        let bytes = reader.read_exact(len);
-
-        reader.is_empty() && bytes.to_vec() == src
+        let reader: &[u8] = &*src;
+        check_read_exact(&src, reader)
     }
 
     #[quickcheck]
     fn qc_try_read_exact(src: Vec<u8>) -> bool {
-        let len = src.len();
-        let mut reader: &[u8] = &*src;
-
-        let bytes = reader.try_read_exact(len).unwrap();
-
-        reader.is_empty() && bytes.to_vec() == src
-    }
-
-    #[quickcheck]
-    fn qc_read_exact_chunks(src: Vec<u8>, chunks: Vec<u8>) -> TestResult {
-        if src.len() != chunks.iter().fold(0_usize, |acc, n| acc + usize::from(*n)) {
-            return TestResult::discard();
-        }
-
-        let len = src.len();
-        let mut reader: &[u8] = &*src;
-        let mut sink = Vec::with_capacity(len);
-
-        for n in chunks.iter().map(|n| usize::from(*n)) {
-            sink.extend_from_slice(reader.read_exact(n));
-        }
-
-        TestResult::from_bool(reader.is_empty() && sink == src)
-    }
-
-    #[quickcheck]
-    fn qc_try_read_exact_chunks(src: Vec<u8>, chunks: Vec<u8>) -> TestResult {
-        if src.len() != chunks.iter().fold(0_usize, |acc, n| acc + usize::from(*n)) {
-            return TestResult::discard();
-        }
-
-        let len = src.len();
-        let mut reader: &[u8] = &*src;
-        let mut sink = Vec::with_capacity(len);
-
-        for n in chunks.iter().map(|n| usize::from(*n)) {
-            sink.extend_from_slice(reader.try_read_exact(n).unwrap());
-        }
-
-        TestResult::from_bool(reader.is_empty() && sink == src)
+        let reader: &[u8] = &*src;
+        check_try_read_exact(&src, reader)
     }
 }
 
-mod mut_slice {
-    use byteio::ReadBytes;
+mod slice_mut_ref {
+    use super::*;
 
-    use quickcheck::TestResult;
     use quickcheck_macros::quickcheck;
 
     #[quickcheck]
     #[should_panic]
-    fn qc_read_exact_not_enough_bytes(mut src: Vec<u8>) -> bool {
-        let len = src.len();
-        let mut src: &mut [u8] = &mut *src;
-
-        let _ = src.read_exact(len + 1);
-
-        true
+    fn qc_read_exact_not_enough_bytes(src: Vec<u8>) {
+        let reader: &mut &[u8] = &mut &*src;
+        check_read_exact_not_enough_bytes(&src, reader);
     }
 
     #[quickcheck]
-    fn qc_try_read_exact_not_enough_bytes(mut src: Vec<u8>) -> bool {
-        let len = src.len();
-        let mut src: &mut [u8] = &mut *src;
-
-        src.try_read_exact(len + 1).unwrap_err() == byteio::Error::EndOfStream
+    fn qc_try_read_exact_not_enough_bytes(src: Vec<u8>) -> bool {
+        let reader: &mut &[u8] = &mut &*src;
+        check_try_read_exact_not_enough_bytes(&src, reader)
     }
 
     #[quickcheck]
-    fn qc_read_exact(mut src: Vec<u8>) -> bool {
-        let len = src.len();
-        let mut reader: &mut [u8] = &mut *src;
-
-        let bytes = reader.read_exact(len);
-
-        reader.is_empty() && bytes.to_vec() == src
+    fn qc_read_exact(src: Vec<u8>) -> bool {
+        let reader: &mut &[u8] = &mut &*src;
+        check_read_exact(&src, reader)
     }
 
     #[quickcheck]
-    fn qc_try_read_exact(mut src: Vec<u8>) -> bool {
-        let len = src.len();
-        let mut reader: &mut [u8] = &mut *src;
+    fn qc_try_read_exact(src: Vec<u8>) -> bool {
+        let reader: &mut &[u8] = &mut &*src;
+        check_try_read_exact(&src, reader)
+    }
+}
 
-        let bytes = reader.try_read_exact(len).unwrap();
+mod mut_slice {
+    use super::*;
 
-        reader.is_empty() && bytes.to_vec() == src
+    use quickcheck_macros::quickcheck;
+
+    #[quickcheck]
+    #[should_panic]
+    fn qc_read_exact_not_enough_bytes(src: Vec<u8>) {
+        let mut src2 = src.clone();
+        let reader: &mut [u8] = &mut *src2;
+
+        check_read_exact_not_enough_bytes(&src, reader);
     }
 
     #[quickcheck]
-    fn qc_read_exact_chunks(mut src: Vec<u8>, chunks: Vec<u8>) -> TestResult {
-        if src.len() != chunks.iter().fold(0_usize, |acc, n| acc + usize::from(*n)) {
-            return TestResult::discard();
-        }
+    fn qc_try_read_exact_not_enough_bytes(src: Vec<u8>) -> bool {
+        let mut src2 = src.clone();
+        let reader: &mut [u8] = &mut *src2;
 
-        let len = src.len();
-        let mut reader: &mut [u8] = &mut *src;
-        let mut sink = Vec::with_capacity(len);
-
-        for n in chunks.iter().map(|n| usize::from(*n)) {
-            sink.extend_from_slice(reader.read_exact(n));
-        }
-
-        TestResult::from_bool(reader.is_empty() && sink == src)
+        check_try_read_exact_not_enough_bytes(&src, reader)
     }
 
     #[quickcheck]
-    fn qc_try_read_exact_chunks(mut src: Vec<u8>, chunks: Vec<u8>) -> TestResult {
-        if src.len() != chunks.iter().fold(0_usize, |acc, n| acc + usize::from(*n)) {
-            return TestResult::discard();
-        }
+    fn qc_read_exact(src: Vec<u8>) -> bool {
+        let mut src2 = src.clone();
+        let reader: &mut [u8] = &mut *src2;
 
-        let len = src.len();
-        let mut reader: &mut [u8] = &mut *src;
-        let mut sink = Vec::with_capacity(len);
+        check_read_exact(&src, reader)
+    }
 
-        for n in chunks.iter().map(|n| usize::from(*n)) {
-            sink.extend_from_slice(reader.try_read_exact(n).unwrap());
-        }
+    #[quickcheck]
+    fn qc_try_read_exact(src: Vec<u8>) -> bool {
+        let mut src2 = src.clone();
+        let reader: &mut [u8] = &mut *src2;
 
-        TestResult::from_bool(reader.is_empty() && sink == src)
+        check_try_read_exact(&src, reader)
+    }
+}
+
+mod mut_slice_mut_ref {
+    use super::*;
+
+    use quickcheck_macros::quickcheck;
+
+    #[quickcheck]
+    #[should_panic]
+    fn qc_read_exact_not_enough_bytes(src: Vec<u8>) {
+        let mut src2 = src.clone();
+        let reader: &mut &mut [u8] = &mut &mut *src2;
+
+        check_read_exact_not_enough_bytes(&src, reader);
+    }
+
+    #[quickcheck]
+    fn qc_try_read_exact_not_enough_bytes(src: Vec<u8>) -> bool {
+        let mut src2 = src.clone();
+        let reader: &mut &mut [u8] = &mut &mut *src2;
+
+        check_try_read_exact_not_enough_bytes(&src, reader)
+    }
+
+    #[quickcheck]
+    fn qc_read_exact(src: Vec<u8>) -> bool {
+        let mut src2 = src.clone();
+        let reader: &mut &mut [u8] = &mut &mut *src2;
+
+        check_read_exact(&src, reader)
+    }
+
+    #[quickcheck]
+    fn qc_try_read_exact(src: Vec<u8>) -> bool {
+        let mut src2 = src.clone();
+        let reader: &mut &mut [u8] = &mut &mut *src2;
+
+        check_try_read_exact(&src, reader)
     }
 }

@@ -1,161 +1,153 @@
-mod mut_slice {
-    use byteio::WriteBytes;
+use byteio::WriteBytes;
 
-    use itertools::Itertools;
-    use quickcheck::TestResult;
+fn check_write_exact_not_enough_bytes<W: WriteBytes>(mut src: Vec<u8>, mut writer: W) {
+    src.push(0);
+    writer.write_exact(&src);
+}
+
+fn check_try_write_exact_not_enough_bytes<W: WriteBytes>(mut src: Vec<u8>, mut writer: W) -> bool {
+    src.push(0);
+    writer.try_write_exact(&src).unwrap_err() == ::byteio::Error::EndOfStream
+}
+
+fn check_write_exact<W: WriteBytes, F: Fn(W) -> bool>(src: &[u8], mut writer: W, test: F) -> bool {
+    writer.write_exact(src);
+    test(writer)
+}
+
+fn check_try_write_exact<W: WriteBytes, F: Fn(W) -> bool>(
+    src: &[u8],
+    mut writer: W,
+    test: F,
+) -> bool {
+    writer.try_write_exact(src).unwrap();
+    test(writer)
+}
+
+mod mut_slice {
+    use super::*;
+
     use quickcheck_macros::quickcheck;
 
     #[quickcheck]
     #[should_panic]
-    fn qc_write_exact_not_enough_bytes(src: Vec<u8>) -> TestResult {
-        if src.is_empty() {
-            return TestResult::discard();
-        }
+    fn qc_write_exact_not_enough_bytes(src: Vec<u8>) {
+        let mut src2 = src.clone();
+        let writer: &mut [u8] = &mut src2;
 
-        let mut dst = vec![0; src.len() - 1];
-        let src: &[u8] = &*src;
-        let mut dst: &mut [u8] = &mut *dst;
-
-        dst.write_exact(src);
-
-        TestResult::from_bool(true)
+        check_write_exact_not_enough_bytes(src, writer)
     }
 
     #[quickcheck]
-    fn qc_try_write_exact_not_enough_bytes(src: Vec<u8>) -> TestResult {
-        if src.is_empty() {
-            return TestResult::discard();
-        }
+    fn qc_try_write_exact_not_enough_bytes(src: Vec<u8>) -> bool {
+        let mut src2 = src.clone();
+        let writer: &mut [u8] = &mut src2;
 
-        let mut dst = vec![0; src.len() - 1];
-        let src: &[u8] = &*src;
-        let mut dst: &mut [u8] = &mut *dst;
-
-        TestResult::from_bool(dst.try_write_exact(src).unwrap_err() == byteio::Error::EndOfStream)
+        check_try_write_exact_not_enough_bytes(src, writer)
     }
 
     #[quickcheck]
     fn qc_write_exact(src: Vec<u8>) -> bool {
         let mut dst = vec![0; src.len()];
-        let src: &[u8] = &*src;
-        let mut writer: &mut [u8] = &mut *dst;
+        let writer: &mut [u8] = &mut dst;
 
-        writer.write_exact(src);
-
-        writer.is_empty() && dst == src
+        check_write_exact(&src, writer, |w| w.as_mut().is_empty()) && dst == src
     }
 
     #[quickcheck]
     fn qc_try_write_exact(src: Vec<u8>) -> bool {
         let mut dst = vec![0; src.len()];
-        let src: &[u8] = &*src;
-        let mut writer: &mut [u8] = &mut *dst;
+        let writer: &mut [u8] = &mut dst;
 
-        writer.try_write_exact(src).unwrap();
+        check_try_write_exact(&src, writer, |w| w.as_mut().is_empty()) && dst == src
+    }
+}
 
-        writer.is_empty() && dst == src
+mod mut_slice_mut_ref {
+    use super::*;
+
+    use quickcheck_macros::quickcheck;
+
+    #[quickcheck]
+    #[should_panic]
+    fn qc_write_exact_not_enough_bytes(src: Vec<u8>) {
+        let mut src2 = src.clone();
+        let writer: &mut &mut [u8] = &mut &mut *src2;
+
+        check_write_exact_not_enough_bytes(src, writer)
     }
 
     #[quickcheck]
-    fn qc_write_exact_chunks(src: Vec<u8>, mut chunks: Vec<u8>) -> TestResult {
-        if src.len() != chunks.iter().fold(0_usize, |acc, n| acc + usize::from(*n)) {
-            return TestResult::discard();
-        }
+    fn qc_try_write_exact_not_enough_bytes(src: Vec<u8>) -> bool {
+        let mut src2 = src.clone();
+        let writer: &mut &mut [u8] = &mut &mut *src2;
 
-        let mut dst = vec![0; src.len()];
-        let src: &[u8] = &*src;
-        let mut writer: &mut [u8] = &mut *dst;
-
-        for chunk in src.into_iter().batching(|it| {
-            chunks.pop().map(|c| it.take(usize::from(c)).map(|n| *n).collect::<Vec<_>>())
-        }) {
-            writer.write_exact(&*chunk);
-        }
-
-        TestResult::from_bool(writer.is_empty() && dst == src)
+        check_try_write_exact_not_enough_bytes(src, writer)
     }
 
     #[quickcheck]
-    fn qc_try_write_exact_chunks(src: Vec<u8>, mut chunks: Vec<u8>) -> TestResult {
-        if src.len() != chunks.iter().fold(0_usize, |acc, n| acc + usize::from(*n)) {
-            return TestResult::discard();
-        }
-
+    fn qc_write_exact(src: Vec<u8>) -> bool {
         let mut dst = vec![0; src.len()];
-        let src: &[u8] = &*src;
-        let mut writer: &mut [u8] = &mut *dst;
+        let writer: &mut &mut [u8] = &mut &mut *dst;
 
-        for chunk in src.into_iter().batching(|it| {
-            chunks.pop().map(|c| it.take(usize::from(c)).map(|n| *n).collect::<Vec<_>>())
-        }) {
-            writer.try_write_exact(&*chunk).unwrap();
-        }
+        check_write_exact(&src, writer, |w| w.as_mut().is_empty()) && dst == src
+    }
 
-        TestResult::from_bool(writer.is_empty() && dst == src)
+    #[quickcheck]
+    fn qc_try_write_exact(src: Vec<u8>) -> bool {
+        let mut dst = vec![0; src.len()];
+        let writer: &mut &mut [u8] = &mut &mut *dst;
+
+        check_try_write_exact(&src, writer, |w| w.as_mut().is_empty()) && dst == src
     }
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 mod mut_vec_ref {
-    use byteio::WriteBytes;
+    use super::*;
 
-    use itertools::Itertools;
-    use quickcheck::TestResult;
     use quickcheck_macros::quickcheck;
 
     #[quickcheck]
     fn qc_write_exact(src: Vec<u8>) -> bool {
         let mut dst = Vec::with_capacity(src.len());
-        let src: &[u8] = &*src;
+        let writer: &mut Vec<u8> = &mut dst;
 
-        (&mut dst).write_exact(src);
-
-        dst == src
+        check_write_exact(&src, writer, |w| AsMut::<[u8]>::as_mut(w).len() == src.len())
+            && dst == src
     }
 
     #[quickcheck]
     fn qc_try_write_exact(src: Vec<u8>) -> bool {
         let mut dst = Vec::with_capacity(src.len());
-        let src: &[u8] = &*src;
+        let writer: &mut Vec<u8> = &mut dst;
 
-        (&mut dst).try_write_exact(src).unwrap();
+        check_try_write_exact(&src, writer, |w| AsMut::<[u8]>::as_mut(w).len() == src.len())
+            && dst == src
+    }
+}
 
-        dst == src
+#[cfg(any(feature = "std", feature = "alloc"))]
+mod mut_vec_ref_mut_ref {
+    use super::*;
+
+    use quickcheck_macros::quickcheck;
+
+    #[quickcheck]
+    fn qc_write_exact(src: Vec<u8>) -> bool {
+        let mut dst = Vec::with_capacity(src.len());
+        let writer: &mut &mut Vec<u8> = &mut &mut dst;
+
+        check_write_exact(&src, writer, |w| AsMut::<[u8]>::as_mut(w).len() == src.len())
+            && dst == src
     }
 
     #[quickcheck]
-    fn qc_write_exact_chunks(src: Vec<u8>, mut chunks: Vec<u8>) -> TestResult {
-        if src.len() != chunks.iter().fold(0_usize, |acc, n| acc + usize::from(*n)) {
-            return TestResult::discard();
-        }
-
+    fn qc_try_write_exact(src: Vec<u8>) -> bool {
         let mut dst = Vec::with_capacity(src.len());
-        let src: &[u8] = &*src;
+        let writer: &mut &mut Vec<u8> = &mut &mut dst;
 
-        for chunk in src.into_iter().batching(|it| {
-            chunks.pop().map(|c| it.take(usize::from(c)).map(|n| *n).collect::<Vec<_>>())
-        }) {
-            (&mut dst).write_exact(&*chunk);
-        }
-
-        TestResult::from_bool(dst == src)
-    }
-
-    #[quickcheck]
-    fn qc_try_write_exact_chunks(src: Vec<u8>, mut chunks: Vec<u8>) -> TestResult {
-        if src.len() != chunks.iter().fold(0_usize, |acc, n| acc + usize::from(*n)) {
-            return TestResult::discard();
-        }
-
-        let mut dst = Vec::with_capacity(src.len());
-        let src: &[u8] = &*src;
-
-        for chunk in src.into_iter().batching(|it| {
-            chunks.pop().map(|c| it.take(usize::from(c)).map(|n| *n).collect::<Vec<_>>())
-        }) {
-            (&mut dst).try_write_exact(&*chunk).unwrap();
-        }
-
-        TestResult::from_bool(dst == src)
+        check_try_write_exact(&src, writer, |w| AsMut::<[u8]>::as_mut(w).len() == src.len())
+            && dst == src
     }
 }

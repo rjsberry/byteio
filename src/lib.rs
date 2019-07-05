@@ -334,6 +334,16 @@ impl<'a> ReadBytes<'a> for &'a mut [u8] {
     }
 }
 
+impl<'a, R: ReadBytes<'a>> ReadBytes<'a> for &'_ mut R {
+    fn read_exact(&mut self, n: usize) -> &'a [u8] {
+        (**self).read_exact(n)
+    }
+
+    fn try_read_exact(&mut self, n: usize) -> crate::Result<&'a [u8]> {
+        (**self).try_read_exact(n)
+    }
+}
+
 /*
  *
  * ReadBytesExt
@@ -1044,6 +1054,16 @@ impl<'a> WriteBytes for &'a mut Vec<u8> {
     fn try_write_exact(&mut self, buf: &[u8]) -> crate::Result<()> {
         self.write_exact(buf);
         Ok(())
+    }
+}
+
+impl<W: WriteBytes> WriteBytes for &'_ mut W {
+    fn write_exact(&mut self, buf: &[u8]) {
+        (**self).write_exact(buf)
+    }
+
+    fn try_write_exact(&mut self, buf: &[u8]) -> crate::Result<()> {
+        (**self).try_write_exact(buf)
     }
 }
 
