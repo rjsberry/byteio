@@ -1037,7 +1037,7 @@ pub trait WriteBytes: AsMut<[u8]> {
     }
 }
 
-impl<'a> WriteBytes for &'a mut [u8] {
+impl WriteBytes for &'_ mut [u8] {
     fn write_exact(&mut self, buf: &[u8]) {
         let (a, b) = mem::replace(self, &mut []).split_at_mut(buf.len());
         a.copy_from_slice(&buf);
@@ -1046,7 +1046,7 @@ impl<'a> WriteBytes for &'a mut [u8] {
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
-impl<'a> WriteBytes for &'a mut Vec<u8> {
+impl WriteBytes for &'_ mut Vec<u8> {
     fn write_exact(&mut self, buf: &[u8]) {
         self.extend_from_slice(buf);
     }
