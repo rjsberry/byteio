@@ -1,6 +1,6 @@
 [package]
 name = "byteio"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["Richard Berry <rjsberry@pm.me>"]
 license = "MIT/Apache-2.0"
 description = "I/O abstractions for bytes"
