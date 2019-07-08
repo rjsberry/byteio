@@ -1046,7 +1046,7 @@ impl WriteBytes for &'_ mut [u8] {
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
-impl WriteBytes for &'_ mut Vec<u8> {
+impl WriteBytes for Vec<u8> {
     fn write_exact(&mut self, buf: &[u8]) {
         self.extend_from_slice(buf);
     }
